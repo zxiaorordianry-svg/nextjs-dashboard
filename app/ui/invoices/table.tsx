@@ -3,7 +3,7 @@ import { UpdateInvoice, DeleteInvoice } from '@/app/ui/invoices/buttons';
 import InvoiceStatus from '@/app/ui/invoices/status';
 import { formatDateToLocal, formatCurrency } from '@/app/lib/utils';
 import { fetchFilteredInvoices } from '@/app/lib/data';
-
+// 是一个服务器组件，它获取自己的数据，因此您可以将页面中的 searchParams 属性传递给该组件。
 export default async function InvoicesTable({
   query,
   currentPage,
