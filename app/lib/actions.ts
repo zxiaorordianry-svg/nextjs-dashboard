@@ -4,15 +4,17 @@ import { z } from "zod";
 import postgres from "postgres";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { signIn } from "@/auth";
+import { AuthError } from "next-auth";
 const sql = postgres(process.env.POSTGRES_URL!, { ssl: "require" });
 const FormSchema = z.object({
   id: z.string(),
   customerId: z.string({
-    invalid_type_error: 'Please select a customer.',
+    invalid_type_error: "Please select a customer.",
   }),
-  amount: z.coerce.number().gt(0, { message: 'Please enter an amount greater than $0.' }),// 强制更改字符串到数字
+  amount: z.coerce.number().gt(0, { message: "Please enter an amount greater than $0." }), // 强制更改字符串到数字
   status: z.enum(["pending", "paid"], {
-    invalid_type_error: 'Please select an invoice status.',
+    invalid_type_error: "Please select an invoice status.",
   }),
   date: z.string(),
 });
@@ -36,7 +38,7 @@ export async function createInvoice(prevState: State, formData: FormData) {
   if (!validatedFields.success) {
     return {
       errors: validatedFields.error.flatten().fieldErrors,
-      message: 'Missing Fields. Failed to Create Invoice.',
+      message: "Missing Fields. Failed to Create Invoice.",
     };
   }
   const { customerId, amount, status } = validatedFields.data;
@@ -52,11 +54,9 @@ export async function createInvoice(prevState: State, formData: FormData) {
   } catch (error) {
     console.error(error);
     return {
-      message: 'Database Error: Failed to Create Invoice.',
+      message: "Database Error: Failed to Create Invoice.",
     };
-
   }
-
 }
 
 // Use Zod to update the expected types
@@ -71,10 +71,10 @@ export async function updateInvoice(id: string, prevState: State, formData: Form
   if (!validatedFields.success) {
     return {
       errors: validatedFields.error.flatten().fieldErrors,
-      message: 'Missing Fields. Failed to Update Invoice.',
+      message: "Missing Fields. Failed to Update Invoice.",
     };
   }
-  const { customerId, amount, status } = validatedFields.data
+  const { customerId, amount, status } = validatedFields.data;
   const amountInCents = amount * 100;
   try {
     await sql`
@@ -85,11 +85,9 @@ export async function updateInvoice(id: string, prevState: State, formData: Form
   } catch (error) {
     console.error(error);
     return {
-      message: 'Database Error: Failed to Update Invoice.',
+      message: "Database Error: Failed to Update Invoice.",
     };
-
   }
-
 
   revalidatePath("/dashboard/invoices");
   redirect("/dashboard/invoices");
@@ -98,4 +96,19 @@ export async function updateInvoice(id: string, prevState: State, formData: Form
 export async function deleteInvoice(id: string) {
   await sql`DELETE FROM invoices WHERE id = ${id}`;
   revalidatePath("/dashboard/invoices");
+}
+export async function authenticate(prevState: string | undefined, formData: FormData) {
+  try {
+    await signIn("credentials", formData);
+  } catch (error) {
+    if (error instanceof AuthError) {
+      switch (error.type) {
+        case "CredentialsSignin":
+          return "Invalid credentials.";
+        default:
+          return "Something went wrong.";
+      }
+    }
+    throw error;
+  }
 }
